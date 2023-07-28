@@ -1,54 +1,47 @@
-node{
-    
-    stage('Clone repo'){
-        git credentialsId: 'GIT-Credentials', url: 'https://github.com/ashokitschool/maven-web-app.git'
-    }
-    
-    stage('Maven Build'){
-        def mavenHome = tool name: "Maven-3.8.6", type: "maven"
-        def mavenCMD = "${mavenHome}/bin/mvn"
-        sh "${mavenCMD} clean package"
-    }
-    
-    stage('SonarQube analysis') {       
-        withSonarQubeEnv('Sonar-Server-7.8') {
-       	sh "mvn sonar:sonar"    	
-    }
-        
-    stage('upload war to nexus'){
-	steps{
-		nexusArtifactUploader artifacts: [	
-			[
-				artifactId: '01-maven-web-app',
-				classifier: '',
-				file: 'target/01-maven-web-app.war',
-				type: war		
-			]	
-		],
-		credentialsId: 'nexus3',
-		groupId: 'in.ashokit',
-		nexusUrl: '',
-		protocol: 'http',
-		repository: 'ashokit-release'
-		version: '1.0.0'
-	}
-}
-    
-    stage('Build Image'){
-        sh 'docker build -t ashokit/mavenwebapp .'
-    }
-    
-    stage('Push Image'){
-        withCredentials([string(credentialsId: 'DOCKER-CREDENTIALS', variable: 'DOCKER_CREDENTIALS')]) {
-            sh 'docker login -u ashokit -p ${DOCKER_CREDENTIALS}'
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                git credentialsId: 'aws-cred', url: 'https://github.com/prashantdh28/https-github.com-MithunTechnologiesDevOps-maven-web-application.git'
+            }
         }
-        sh 'docker push ashokit/mavenwebapp'
+
+        stage('Maven Build') {
+            steps {
+                script {
+                    def mavenHome = tool name: "maven", type: "maven"
+                    def mavenCMD = "${mavenHome}/bin/mvn"
+                    sh "${mavenCMD} clean package"
+                }
+            }
+        }
+
+        stage('Store War to JFrog Artifactory') {
+            steps {
+                script {
+                    def server = Artifactory.server 'Artifactory'
+                    def uploadSpec = """{
+                        "files": [
+                            {
+                                "pattern": "target/maven-web-application.war",
+                                "target": "java-web-app/com.mt/maven-web-application/0.0.1-SNAPSHOT/"
+
+                            }
+                        ]
+                    }"""
+                    server.upload spec: uploadSpec
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sshagent(['tomcat-server']) {
+                    sh 'scp -o StrictHostKeyChecking=no target/maven-web-application.war ubuntu@65.0.180.121:/home/ubuntu/tomcat/webapps'
+                }
+            }
+        }
     }
-    
-    stage('Deploy App'){
-        kubernetesDeploy(
-            configs: 'maven-web-app-deploy.yml',
-            kubeconfigId: 'Kube-Config'
-        )
-    }    
 }
