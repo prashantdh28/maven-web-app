@@ -1,13 +1,6 @@
 pipeline {
     agent any
 
-    stages {
-        stage('Git Clone') {
-            steps {
-                git credentialsId: 'aws-cred', url: 'https://github.com/prashantdh28/https-github.com-MithunTechnologiesDevOps-maven-web-application.git'
-            }
-        }
-
         stage('Maven Build') {
             steps {
                 script {
