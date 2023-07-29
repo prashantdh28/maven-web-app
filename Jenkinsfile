@@ -18,7 +18,7 @@ pipeline {
                     def uploadSpec = """{
                         "files": [
                             {
-                                "pattern": "target/maven-web-application.war",
+                                "pattern": "target/*.war",
                                 "target": "java-web-app/com.mt/maven-web-application/0.0.1-SNAPSHOT/"
 
                             }
@@ -32,7 +32,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sshagent(['tomcat-server']) {
-                    sh 'scp -o StrictHostKeyChecking=no target/maven-web-application.war ubuntu@13.233.119.205:/home/ubuntu/tomcat/webapps'
+                    sh 'scp -o StrictHostKeyChecking=no target/*.war ubuntu@13.233.119.205:/home/ubuntu/tomcat/webapps'
                 }
             }
         }
